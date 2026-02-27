@@ -30,7 +30,7 @@ GROQ_API_KEY=your_key
 
 ## Progress
 - [x] Stage 1: Working search agent prototype
-- [ ] Stage 2: Multi-step planning + web scraper
+- [x] Stage 2: Multi-step planning + web scraper
 - [ ] Stage 3: Data analysis integration
 - [ ] Stage 4: Polished report generation
 - [ ] Stage 5: Gradio UI
