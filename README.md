@@ -128,30 +128,6 @@ The agent runs a **ReAct loop** (Reason + Act) — it decides what to search, re
 
 ---
 
-## 📊 Example Output
-
-Running `python main.py "future of renewable energy 2025"` produces:
-
-```
-🚀 Starting research on: 'future of renewable energy 2025'
---------------------------------------------------
-[2.1s] 🤖 Calling tool → search_web
-         Input: {'query': 'renewable energy trends 2025'}
-[4.8s] 🔧 [search_web] returned results
-[5.1s] 🤖 Calling tool → search_web
-         Input: {'query': 'solar wind power developments 2025'}
-[7.3s] 🔧 [search_web] returned results
-...
-[28.4s] 🤖 Claude writing response...
---------------------------------------------------
-✅ Research complete!
-   Searches made: 4
-   Pages scraped: 3
-   Duration: 31.2s
-   Tokens — Input: 18,432 | Output: 2,841 | Total: 21,273
-   Run ID: 12
-```
-
 Generated reports include:
 - Executive Summary
 - Key Findings with cited source URLs
