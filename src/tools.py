@@ -2,7 +2,7 @@ import os
 import datetime
 import httpx
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from langchain_core.tools import tool
 
 # Shared metrics tracker
@@ -23,10 +23,9 @@ def search_web(query: str) -> str:
     run_metrics["num_searches"] += 1
     try:
         with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=5))
+            results = list(ddgs.text(query, max_results=5, timeout=10))
             if not results:
                 return "No results found."
-            # Format results cleanly
             formatted = []
             for r in results:
                 formatted.append(f"Title: {r.get('title', '')}\nURL: {r.get('href', '')}\nSnippet: {r.get('body', '')}\n")

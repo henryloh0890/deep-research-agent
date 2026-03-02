@@ -9,6 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 import gradio as gr
+import glob as glob_module
 import os
 import re
 import time as t
@@ -49,7 +50,6 @@ def run_research_streaming(topic: str, model_name: str):
     try:
         for chunk in agent.stream(
             {"messages": [HumanMessage(content=build_prompt(topic))]},
-            config={"recursion_limit": 25}
         ):
             last_chunk = chunk
             elapsed = round(t.time() - start_time, 1)
@@ -58,9 +58,20 @@ def run_research_streaming(topic: str, model_name: str):
                 for message in chunk["agent"].get("messages", []):
                     content = message.content
 
+                    # Replace the entire token extraction block with this:
                     usage = message.response_metadata.get("usage", {})
-                    input_tokens += usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
-                    output_tokens += usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+                    usage_meta = getattr(message, "usage_metadata", {}) or {}
+
+                    # Anthropic
+                    input_tokens += usage.get("input_tokens", 0)
+                    output_tokens += usage.get("output_tokens", 0)
+                    # Groq/OpenAI
+                    input_tokens += usage.get("prompt_tokens", 0)
+                    output_tokens += usage.get("completion_tokens", 0)
+                    # Gemini — uses usage_metadata attribute directly
+                    if isinstance(usage_meta, dict):
+                        input_tokens += usage_meta.get("input_tokens", 0)
+                        output_tokens += usage_meta.get("output_tokens", 0)
 
                     if isinstance(content, list):
                         for block in content:
@@ -76,15 +87,12 @@ def run_research_streaming(topic: str, model_name: str):
                     tool_name = getattr(message, "name", "unknown")
                     yield log(f"[{elapsed}s] 🔧 [{tool_name}] returned results"), "", ""
 
-        # Extract filename
-        if last_chunk and "agent" in last_chunk:
-            messages = last_chunk["agent"].get("messages", [])
-            if messages:
-                final_content = messages[-1].content
-                if isinstance(final_content, str):
-                    match = re.search(r'[\w_-]+\.md', final_content)
-                    if match:
-                        report_filename = match.group(0)
+        # Extract report filename — use most recently created file
+        import glob as glob_module
+        reports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+        md_files = glob_module.glob(os.path.join(reports_dir, "*.md"))
+        if md_files:
+            report_filename = os.path.basename(max(md_files, key=os.path.getctime))
 
     except Exception as e:
         status = f"error: {str(e)}"

@@ -1,5 +1,6 @@
 import sys
 import io
+import glob as glob_module
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -157,7 +158,6 @@ def run_research(topic: str, model_name: str = "Claude Sonnet 4.6 (Recommended)"
     try:
         for chunk in agent.stream(
             {"messages": [HumanMessage(content=build_prompt(topic))]},
-            config={"recursion_limit": 25}
         ):
             last_chunk = chunk
             elapsed = round(time.time() - start_time, 1)
@@ -188,15 +188,11 @@ def run_research(topic: str, model_name: str = "Claude Sonnet 4.6 (Recommended)"
                         tool_name = getattr(message, "name", "unknown")
                         print(f"[{elapsed}s] 🔧 [{tool_name}] returned results", flush=True)
 
-        # Extract report filename
-        if last_chunk and "agent" in last_chunk:
-            messages = last_chunk["agent"].get("messages", [])
-            if messages:
-                final_content = messages[-1].content
-                if isinstance(final_content, str):
-                    match = re.search(r'[\w_-]+\.md', final_content)
-                    if match:
-                        report_filename = match.group(0)
+        # Extract report filename — use most recently created file
+        reports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reports")
+        md_files = glob_module.glob(os.path.join(reports_dir, "*.md"))
+        if md_files:
+            report_filename = os.path.basename(max(md_files, key=os.path.getctime))
 
     except Exception as e:
         status = f"error: {str(e)}"
