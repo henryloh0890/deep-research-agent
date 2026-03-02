@@ -5,12 +5,16 @@ if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
 import gradio as gr
 import os
 import re
 import time as t
 from langchain_core.messages import HumanMessage
-from src.agent import build_agent, build_prompt, run_metrics, reset_metrics, AVAILABLE_MODELS
+from src.agent import build_agent, build_prompt, AVAILABLE_MODELS
+from src.tools import run_metrics, reset_metrics
 from src.database import load_history, log_research_run, init_database
 
 init_database()
@@ -209,10 +213,12 @@ with gr.Blocks(title="Deep Research Agent", theme=gr.themes.Soft()) as app:
         ### Available Models
         | Model | Provider | Cost |
         |-------|----------|------|
-        | Claude Sonnet 4.5 | Anthropic | Paid |
+        | Claude Sonnet 4.6 | Anthropic | Paid |
         | Claude Haiku 4.5 | Anthropic | Paid (cheaper) |
         | Llama 3.3 70B | Groq | Free |
         | Llama 3.1 8B | Groq | Free |
+        | Gemini 2.5 Flash | Google | Free tier |
+        | Gemini 2.5 Flash Lite | Google | Free tier |
         | Gemini 2.0 Flash | Google | Free tier |
 
         ### Tech Stack

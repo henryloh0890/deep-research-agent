@@ -1,12 +1,36 @@
+import sys
+import io
+
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+import os
+import re
+import time
+import warnings
+import datetime
+warnings.filterwarnings("ignore")
+
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
+from langgraph.prebuilt import create_react_agent  # this was missing
+
+from src.tools import tools, run_metrics, reset_metrics
+from src.database import init_database, log_research_run
+
+init_database()
 
 # Available models config
 AVAILABLE_MODELS = {
-    "Claude Sonnet 4.5 (Recommended)": {
+    "Claude Sonnet 4.6 (Recommended)": {
         "provider": "anthropic",
-        "model": "claude-sonnet-4-5",
+        "model": "claude-sonnet-4-6",
         "description": "Best quality, paid"
     },
     "Claude Haiku 4.5 (Fast & Cheap)": {
@@ -24,10 +48,20 @@ AVAILABLE_MODELS = {
         "model": "llama-3.1-8b-instant",
         "description": "Free, fastest, lower quality"
     },
+    "Gemini 2.5 Flash (Free Tier)": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "description": "Google, generous free tier, strong reasoning"
+    },
+    "Gemini 2.5 Flash Lite (Free Tier, Fastest)": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash-lite",
+        "description": "Google, fastest and cheapest"
+    },
     "Gemini 2.0 Flash (Free Tier)": {
         "provider": "gemini",
         "model": "gemini-2.0-flash",
-        "description": "Google, generous free tier"
+        "description": "Google, stable and reliable"
     },
 }
 
@@ -51,7 +85,7 @@ def build_llm(model_name: str):
     elif provider == "gemini":
         return ChatGoogleGenerativeAI(
             model=model,
-            google_api_key=os.getenv("GEMINI_API_KEY"),
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0
         )
     
@@ -64,6 +98,32 @@ def build_agent(model_name: str):
     llm = build_llm(model_name)
     return create_react_agent(llm, tools=tools)
 
+def build_prompt(topic: str) -> str:
+    return f"""
+    	You are a thorough research agent. Follow these steps carefully:
+        
+        1. Search for '{topic}' — do this 3 to 4 times with different queries
+        
+        2. From all the URLs you find, select the 3 to 4 MOST RELEVANT and CREDIBLE ones:
+           - Prefer: official sources, academic sites, reputable news outlets, industry blogs
+           - Avoid: forums, social media, low quality blogs, paywalled content
+        
+        3. Scrape each selected page and evaluate whether it contains genuinely useful 
+           information. Skip any page that is too thin or irrelevant.
+        
+        4. Synthesize your findings into a structured report with these sections:
+           - Executive Summary
+           - Key Findings (cite the source URL next to each finding)
+           - Detailed Analysis
+           - Sources (only URLs you actually visited and found useful)
+           - Conclusion
+           You can add additional section if it is deemed informative and important.
+        
+        5. Save the report with a descriptive filename related to '{topic}'
+        
+        Important: Never include sources you did not actually visit and scrape.
+        You must complete all steps in under 20 tool calls total.
+    """
 
 def run_research(topic: str, model_name: str = "Claude Sonnet 4.6 (Recommended)", verbose: bool = True) -> dict:
     """
